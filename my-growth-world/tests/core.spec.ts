@@ -174,3 +174,39 @@ test("关联成就、真正恢复丢失记录以及事件重复导入", async ({
   await expect(page.locator(".preview")).toContainText("将新增 0 条");
   await expect(page.locator(".preview")).toContainText("跳过 1 条");
 });
+
+test("探索地图缩放拖动、直达故事以及手动点亮", async ({ page }) => {
+  await page.goto("/");
+  const world = page.locator(".illustrated-world");
+  await expect(world).toBeVisible();
+  await expect(page.locator(".map-footstep")).toHaveCount(18);
+  await page.getByRole("button", { name: "放大地图", exact: true }).click();
+  await expect(world).toHaveAttribute("style", /scale\(1\.15\)/);
+  const box = await page.locator(".atlas").boundingBox();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + 35);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width / 2 + 60, box!.y + 70);
+  await page.mouse.up();
+  await expect(world).not.toHaveAttribute("style", /translate\(0px, 0px\)/);
+  await page.getByRole("button", { name: "归位", exact: true }).click();
+  await expect(world).toHaveAttribute(
+    "style",
+    /translate\(0px, 0px\) scale\(1\)/,
+  );
+  await page
+    .getByRole("button", {
+      name: "探索经历：当前从事TikTok达人开发和运营相关工作",
+      exact: true,
+    })
+    .click();
+  await expect(page.locator(".story-opening")).toContainText("待确认的故事");
+  await page.getByLabel("状态（手动确认）").selectOption("已完成");
+  await page.getByRole("button", { name: "保存记录" }).click();
+  await expect(
+    page.getByRole("button", { name: "职业成长", exact: true }),
+  ).toContainText("1 / 6 已确认完成");
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "职业成长", exact: true }),
+  ).toContainText("1 / 6 已确认完成");
+});

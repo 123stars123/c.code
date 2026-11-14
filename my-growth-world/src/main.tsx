@@ -28,6 +28,8 @@ import {
   type State,
 } from "./data";
 import "./style.css";
+import { WorldExplorer, Landscape } from "./World";
+import "./world.css";
 type Kind = "nodes" | "cards" | "activities";
 const pages = [
   "我的世界",
@@ -51,7 +53,6 @@ function App() {
   const [pending, setPending] = useState<ReturnType<typeof parseImport> | null>(
     null,
   );
-  const [zoom, setZoom] = useState(1);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     load()
@@ -119,7 +120,7 @@ function App() {
           const b = branches.find((b) => b.id === c.branchId)!;
           return (
             <button
-              className="achievement"
+              className={`achievement card-theme-${branches.findIndex((region) => region.id === b.id)}`}
               key={c.id}
               style={{ "--accent": b.color } as React.CSSProperties}
               onClick={() => edit("cards", c)}
@@ -128,7 +129,14 @@ function App() {
                 <span>{c.status === "待确认" ? "待确认草稿" : c.type}</span>
                 <span>NO. {String(i + 1).padStart(3, "0")}</span>
               </div>
-              <div className="medal">{b.icon}</div>
+              <div className="card-illustration">
+                <svg viewBox="-130 -120 260 200">
+                  <Landscape
+                    theme={branches.findIndex((region) => region.id === b.id)}
+                  />
+                </svg>
+                <span>{b.icon}</span>
+              </div>
               <small>{b.name}</small>
               <h3>{c.title}</h3>
               <p>{c.description || "每一段真实的经历，都值得被珍藏。"}</p>
@@ -232,304 +240,72 @@ function App() {
             {notice} ×
           </div>
         )}
-        {page === 0 && (
+        {(page === 0 || page === 1) && (
           <>
-            <section className="hero">
-              <div>
-                <span className="eyebrow">A WORLD THAT GROWS WITH YOU</span>
-                <h1>
-                  我的成长世界<span>每一步，都让你成为自己。</span>
-                </h1>
-                <p>
-                  探索属于你的六片大陆，把真实经历化为成长的星光。
-                  <br />
-                  这里不评判进度，只珍藏你的每一次出发。
-                </p>
-                <div className="actions">
-                  <button className="primary" onClick={() => edit("cards")}>
-                    <Plus size={17} />
-                    记录一份成就
-                  </button>
-                  <button onClick={() => setPage(1)}>
-                    探索成长地图 <ArrowUpRight size={17} />
+            <WorldExplorer
+              nodes={state.nodes}
+              cards={state.cards}
+              onBranch={openBranch}
+              onNode={(n) => edit("nodes", n)}
+              onNew={() => edit("cards")}
+              onCollection={() => setPage(3)}
+            />
+            {page === 0 && (
+              <section className="campfire">
+                <div className="sectionTitle">
+                  <div>
+                    <span className="eyebrow">MOMENTS BY THE CAMPFIRE</span>
+                    <h2>旅途中的珍藏</h2>
+                  </div>
+                  <button className="text" onClick={() => setPage(3)}>
+                    翻开卡牌图鉴 ↗
                   </button>
                 </div>
-              </div>
-              <div className="heroSeal">
-                <div className="orbit" />
-                <Compass size={100} strokeWidth={0.7} />
-                <span>
-                  YOUR JOURNEY
-                  <br />
-                  YOUR WORLD
-                </span>
-              </div>
-            </section>
-            <div className="sectionTitle">
-              <div>
-                <span className="eyebrow">EXPLORE YOUR PATH</span>
-                <h2>六条路线，无限可能</h2>
-              </div>
-              <button className="text" onClick={() => setPage(1)}>
-                展开世界地图 ↗
-              </button>
-            </div>
-            <div className="routes">
-              {branches.map((b) => {
-                const nodes = state.nodes.filter((n) => n.branchId === b.id);
-                const done = nodes.filter((n) => n.status === "已完成").length;
-                return (
-                  <button
-                    key={b.id}
-                    style={{ "--accent": b.color } as React.CSSProperties}
-                    onClick={() => openBranch(b.id)}
-                  >
-                    <span className="routeIcon">{b.icon}</span>
-                    <small>{b.land}</small>
-                    <h3>{b.name}</h3>
-                    <div className="progress">
-                      <i
-                        style={{
-                          width: `${nodes.length ? (done / nodes.length) * 100 : 0}%`,
+                {cards(state.cards.slice(-3).reverse())}
+                <div className="trail-notes">
+                  <div>
+                    <span>✧ 尚待确认的故事</span>
+                    <strong>
+                      {state.nodes.filter((n) => n.status === "待确认").length}
+                    </strong>
+                    <p>这些经历等待你亲自整理和确认。</p>
+                    <button onClick={() => setPage(2)}>打开成长路线</button>
+                  </div>
+                  <div>
+                    <span>⚑ 正在探索</span>
+                    <strong>
+                      {state.nodes.filter((n) => n.status === "进行中").length}
+                    </strong>
+                    {state.nodes
+                      .filter((n) => n.status === "进行中")
+                      .slice(0, 2)
+                      .map((n) => (
+                        <button key={n.id} onClick={() => edit("nodes", n)}>
+                          {n.title} ↗
+                        </button>
+                      ))}
+                    <p>选择自己的节奏，一次走一小步。</p>
+                  </div>
+                  <div>
+                    <span>◷ 最近的足迹</span>
+                    {timeline.slice(0, 2).map((e) => (
+                      <button
+                        key={e.kind + e.id}
+                        onClick={() => {
+                          setPage(4);
+                          setFilter("");
                         }}
-                      />
-                    </div>
-                    <footer>
-                      {done} / {nodes.length} 节点完成{" "}
-                      <ArrowUpRight size={14} />
-                    </footer>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="sectionTitle">
-              <div>
-                <span className="eyebrow">COLLECT YOUR MOMENTS</span>
-                <h2>最近的成就收藏</h2>
-              </div>
-              <button className="text" onClick={() => setPage(3)}>
-                进入收藏馆 ↗
-              </button>
-            </div>
-            {cards(state.cards.slice(-3).reverse())}
-            <div className="bottomgrid">
-              <section className="panel">
-                <h2>正在探索</h2>
-                {state.nodes
-                  .filter((n) => n.status === "进行中")
-                  .map((n) => (
-                    <button
-                      className="row"
-                      key={n.id}
-                      onClick={() => edit("nodes", n)}
-                    >
-                      {n.title}
-                      <ArrowUpRight size={16} />
-                    </button>
-                  ))}
-                {!state.nodes.some((n) => n.status === "进行中") && (
-                  <p className="muted">
-                    还没有进行中的节点。前往技能树，选择你的下一步。
-                  </p>
-                )}
+                      >
+                        {e.title}
+                        <small>
+                          {e.status} · {e.date || e.timeLabel || "时间待补充"}
+                        </small>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </section>
-              <section className="panel">
-                <h2>最近成长记录</h2>
-                {timeline.slice(0, 3).map((e) => (
-                  <button
-                    className="row"
-                    key={e.id}
-                    onClick={() => edit(e.kind, e)}
-                  >
-                    <span>
-                      {e.title}
-                      <small>
-                        {e.status} · {e.date || e.timeLabel || "时间待补充"}
-                      </small>
-                    </span>
-                    <ArrowUpRight size={16} />
-                  </button>
-                ))}
-              </section>
-            </div>
-          </>
-        )}
-        {page === 1 && (
-          <>
-            <PageTitle
-              eyebrow="THE ATLAS OF YOU"
-              title="成长世界地图"
-              text="六片大陆，六种力量。选择一处，开始你的探索。"
-            />
-            <div className="mapTools">
-              <button onClick={() => setZoom(Math.max(0.6, zoom - 0.2))}>
-                −
-              </button>
-              <span>{Math.round(zoom * 100)}%</span>
-              <button onClick={() => setZoom(Math.min(2, zoom + 0.2))}>
-                ＋
-              </button>
-              <button onClick={() => setZoom(1)}>重置</button>
-              <small>放大后可滚动浏览地图 · 点击区域进入技能树</small>
-            </div>
-            <div className="mapviewport">
-              <svg
-                className="worldmap"
-                viewBox="0 0 1000 660"
-                style={{ width: `${zoom * 100}%`, minWidth: 600 }}
-              >
-                <defs>
-                  <pattern
-                    id="grid"
-                    width="35"
-                    height="35"
-                    patternUnits="userSpaceOnUse"
-                  >
-                    <path
-                      d="M35 0H0V35"
-                      fill="none"
-                      stroke="#b7c6b4"
-                      strokeOpacity=".07"
-                    />
-                  </pattern>
-                  <filter id="shadow">
-                    <feDropShadow
-                      dx="0"
-                      dy="12"
-                      stdDeviation="12"
-                      floodOpacity=".5"
-                    />
-                  </filter>
-                </defs>
-                <rect width="1000" height="660" fill="#142b2b" />
-                <rect width="1000" height="660" fill="url(#grid)" />
-                <path
-                  d="M170 230Q480 70 790 240T760 500Q460 660 170 430Z"
-                  fill="none"
-                  stroke="#bba473"
-                  strokeDasharray="4 10"
-                  opacity=".4"
-                />
-                {branches.map((b, i) => {
-                  const x = [160, 470, 785, 210, 520, 805][i],
-                    y = [180, 125, 210, 420, 440, 450][i];
-                  const nodes = state.nodes.filter((n) => n.branchId === b.id);
-                  return (
-                    <g
-                      key={b.id}
-                      role="button"
-                      aria-label={b.name}
-                      tabIndex={0}
-                      onClick={() => openBranch(b.id)}
-                      onKeyDown={(e) => e.key === "Enter" && openBranch(b.id)}
-                      className="island"
-                      transform={`translate(${x},${y})`}
-                    >
-                      <path
-                        d="M-125 18L-105-56-62-72-28-99 20-78 60-86 100-42 120 9 89 62 44 82-5 68-50 89-98 60Z"
-                        fill={b.color}
-                        fillOpacity=".22"
-                        stroke={b.color}
-                        strokeOpacity=".65"
-                        filter="url(#shadow)"
-                      />
-                      <g
-                        fill="none"
-                        stroke={b.color}
-                        opacity=".48"
-                        strokeWidth="1.5"
-                      >
-                        {i === 0 ? (
-                          <>
-                            <path d="M-90 10V-35H-72V10M-68 0V-52H-43V-6M-37-25V-65H-17V-25M-95 17Q-60 30-28 17M-101 31Q-60 44-20 31" />
-                            <path d="M51-48V-2H91L51-48M47-45L24-5H47M27 5L39 16H78L91 5Z" />
-                          </>
-                        ) : i === 1 ? (
-                          <>
-                            <path d="M-90 0L-52-67-14 0M-64-46L-52-31-42-47M13-20L49-81 91-20M34-55L49-41 62-61" />
-                            <path d="M-10-38V-63Q0-72 10-63V-38M-14-34H14" />
-                          </>
-                        ) : i === 2 ? (
-                          <>
-                            <path d="M-83 12V-42H-68V-60H-54V-42H-38V12M-76-42V-25M-49-42V-25M-68 12V-7H-53V12M29-21L48-67 69-21Z" />
-                            <circle cx="70" cy="-61" r="12" />
-                            <path d="M21 7Q50-9 83 5M17 16Q53 0 90 15" />
-                          </>
-                        ) : i === 3 ? (
-                          <>
-                            {[-85, -57, -29, 40, 70].map((x, j) => (
-                              <g
-                                key={x}
-                                transform={`translate(${x},${j % 2 ? -38 : -12})`}
-                              >
-                                <path d="M0-40L-16-10H-10L-21 4H21L10-10H16ZM0 4V15" />
-                              </g>
-                            ))}
-                            <path d="M-45 30Q-10-15 36 28" />
-                          </>
-                        ) : i === 4 ? (
-                          <>
-                            <path
-                              d="M-88 2Q-66-25-43 2M-88 2H-43M30-24Q54-50 81-24M30-24H81M-56-14Q-5-59 44-31"
-                              strokeDasharray="4 3"
-                            />
-                            <path d="M-84-26V-55M-84-55Q-69-68-63-50M50-47V-73M50-73Q67-85 74-65" />
-                            <circle cx="-20" cy="-67" r="9" />
-                          </>
-                        ) : (
-                          <>
-                            <path d="M-88 9V-34L-62-53-34-34V9M-96-34L-62-59-27-34M-71 9V-12H-52V9M-78-31H-48M-83-34V-63H-74V-43" />
-                            <circle cx="55" cy="-45" r="23" />
-                            <circle cx="55" cy="-45" r="10" />
-                            <path d="M55-80V-68M55-22V-10M20-45H32M78-45H90M30-70L39-61M71-29L80-20M30-20L39-29M71-61L80-70" />
-                          </>
-                        )}
-                      </g>
-                      <circle cy="-12" r="27" fill="#182b2a" stroke={b.color} />
-                      <text
-                        y="0"
-                        textAnchor="middle"
-                        fontSize="30"
-                        fill={b.color}
-                      >
-                        {b.icon}
-                      </text>
-                      <text
-                        y="40"
-                        textAnchor="middle"
-                        fill="#f4ead6"
-                        fontSize="18"
-                      >
-                        {b.name}
-                      </text>
-                      <text
-                        y="63"
-                        textAnchor="middle"
-                        fill={b.color}
-                        fontSize="11"
-                      >
-                        {b.land} ·{" "}
-                        {nodes.filter((n) => n.status === "已完成").length}/
-                        {nodes.length}
-                      </text>
-                    </g>
-                  );
-                })}
-                <text
-                  x="45"
-                  y="615"
-                  fill="#c0ab7d"
-                  fontSize="13"
-                  letterSpacing="4"
-                >
-                  MY GROWTH WORLD · 成长之境
-                </text>
-                <g transform="translate(930 575)" stroke="#bda674" fill="none">
-                  <circle r="28" />
-                  <path d="M0-40V40M-40 0H40M0-30L8 8-8 8Z" />
-                </g>
-              </svg>
-            </div>
+            )}
           </>
         )}
         {page === 2 && (
@@ -885,7 +661,32 @@ function App() {
                 <X />
               </button>
             </div>
-            <p className="muted">草稿不代表完成。请亲自确认经历与状态。</p>
+            <div className="story-opening">
+              <div>
+                <span>
+                  CHAPTER{" "}
+                  {String(
+                    branches.findIndex((b) => b.id === editing.value.branchId) +
+                      1,
+                  ).padStart(2, "0")}{" "}
+                  ·{" "}
+                  {branches.find((b) => b.id === editing.value.branchId)?.land}
+                </span>
+                <h3>{editing.value.title || "每个故事，都始于一次出发"}</h3>
+                <p>
+                  {editing.value.status === "待确认"
+                    ? "✧ 待确认的故事，由你亲自定义它的意义。"
+                    : `✧ ${editing.value.status} · 以你自己的节奏继续。`}
+                </p>
+              </div>
+              <svg viewBox="-130 -120 260 200">
+                <Landscape
+                  theme={branches.findIndex(
+                    (b) => b.id === editing.value.branchId,
+                  )}
+                />
+              </svg>
+            </div>
             {(() => {
               const v = editing.value;
               const field = (k: keyof Entry, label: string, area = false) => (
@@ -1116,13 +917,13 @@ function SkillGraph({
   onSelect: (n: Entry) => void;
 }) {
   const point = (i: number) => ({
-    x: 140 + (i % 3) * 260,
-    y: 90 + Math.floor(i / 3) * 150,
+    x: 140 + (Math.floor(i / 3) % 2 ? 2 - (i % 3) : i % 3) * 260,
+    y: 90 + Math.floor(i / 3) * 180 + (i % 3 === 1 ? 18 : 0),
   });
   return (
     <div className="constellation">
       <svg
-        viewBox={`0 0 800 ${Math.max(220, Math.ceil(nodes.length / 3) * 150 + 30)}`}
+        viewBox={`0 0 800 ${Math.max(220, Math.ceil(nodes.length / 3) * 180 + 30)}`}
         aria-label="技能节点连接图"
       >
         <defs>
@@ -1142,14 +943,27 @@ function SkillGraph({
           const a = point(parent),
             b = point(i);
           return (
-            <path
-              key={n.id}
-              d={`M${a.x} ${a.y} C${a.x} ${a.y + 65},${b.x} ${b.y - 65},${b.x} ${b.y}`}
-              fill="none"
-              stroke={color}
-              strokeOpacity=".4"
-              strokeDasharray="5 6"
-            />
+            <g key={n.id}>
+              <path
+                d={`M${a.x} ${a.y} C${a.x} ${a.y + 75},${b.x} ${b.y - 75},${b.x} ${b.y}`}
+                fill="none"
+                stroke="#849365"
+                strokeWidth="25"
+              />
+              <path
+                d={`M${a.x} ${a.y} C${a.x} ${a.y + 75},${b.x} ${b.y - 75},${b.x} ${b.y}`}
+                fill="none"
+                stroke="#deca97"
+                strokeWidth="20"
+              />
+              <path
+                d={`M${a.x} ${a.y} C${a.x} ${a.y + 75},${b.x} ${b.y - 75},${b.x} ${b.y}`}
+                fill="none"
+                stroke="#fff4cc"
+                strokeWidth="2"
+                strokeDasharray="3 9"
+              />
+            </g>
           );
         })}
         {nodes.map((n, i) => {
@@ -1164,6 +978,7 @@ function SkillGraph({
               onClick={() => onSelect(n)}
               onKeyDown={(e) => e.key === "Enter" && onSelect(n)}
               className="skillpoint"
+              data-status={n.status}
             >
               <circle
                 r="30"
